@@ -23,13 +23,33 @@ export interface CourseDetails extends CoursesContext {
   modules: ModuleDetails[];
 }
 
+export interface CourseDetailsContext extends CoursesContext {
+  completedMaterials: number;
+  totalMaterials: number;
+  modules: ModuleDetailsContext[];
+}
+
 export interface ModuleDetails {
   id: string;
   title: string;
   lessons: LessonDetails[];
 }
 
+export interface ModuleDetailsContext {
+  id: string;
+  title: string;
+  lessons: LessonDetailsContext[];
+  progress: number;
+  completedMaterials: number;
+  totalMaterials: number;
+}
+
 export declare type Material = Article | Video | QuizGroup;
+
+export declare type MaterialContext =
+  | ArticleContext
+  | VideoContext
+  | QuizGroupContext;
 
 export interface LessonDetails {
   id: string;
@@ -39,23 +59,63 @@ export interface LessonDetails {
   materials: Material[];
 }
 
+export interface LessonDetailsContext {
+  id: string;
+  name: string;
+  description?: string;
+  order: number;
+  materials: MaterialContext[];
+}
+
+export interface InfoCardProps {
+  type: "info" | "tip" | "warning" | "success" | "error";
+  title: string;
+  content: string;
+}
+
+export interface MaterialData {
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  body: string;
+  code?: { code: string; language: string };
+  quote?: { text: string; author?: string };
+  info?: InfoCardProps;
+  image?: string;
+}
 export interface Article {
   id: string;
+  created_at: string;
+  updated_at: string;
   title: string;
-  description?: string;
+  data: {
+    [key: string]: MaterialData;
+  };
+  description: string;
   order: number;
   duration: number;
   type: MaterialType.ARTICLE;
 }
 
+export declare type ArticleContext = Article & {
+  isFinished: boolean;
+};
+
 export interface Video {
   id: string;
+  created_at: string;
+  updated_at: string;
   title: string;
+  description: string;
+  order: number;
   youtubeId: string;
   duration: number;
-  description: string;
   type: MaterialType.VIDEO;
 }
+export declare type VideoContext = Video & {
+  isFinished: boolean;
+};
 
 export interface Quiz {
   id: string;
@@ -64,6 +124,7 @@ export interface Quiz {
   correctAnswer: string;
   explanation?: string;
   duration: number;
+  order: number;
   type: MaterialType._QUIZ;
 }
 
@@ -78,11 +139,18 @@ export interface QuizGroup {
   type: MaterialType.QUIZ_GROUP;
 }
 
+export declare type QuizGroupContext = QuizGroup & {
+  isFinished: boolean;
+  old_result?: number;
+};
+
 export enum LevelEnum {
   BEGINNER = "مبتدئ",
   INTERMEDIATE = "متوسط",
   ADVANCED = "متقدم",
 }
+
+export const LevelArray = ["مبتدئ", "متوسط", "متقدم"];
 
 export interface CoursesReport {
   completedCourses: number;
@@ -147,4 +215,9 @@ export interface PatchCourseProgressParams {
   userId: string;
   courseId: string;
   materialId: string;
+  material: {
+    type: MaterialType;
+    quizGroup_id?: string;
+    result?: number;
+  };
 }

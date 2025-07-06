@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Lesson, SideNavbar } from "./_Sidebar";
+import React, { useEffect, useState, useContext } from "react";
+import { SideNavbar } from "./_Sidebar";
 import UserContext from "@/context/UserContext";
-import { useContext } from "react";
 import MaterialViewer from "./_MaterialViewer";
 import NavigationPlayground from "./_TopNav";
 import { useSettings } from "@/context/SettingsContexts";
@@ -10,55 +9,183 @@ import {
   patchCourseProgressApi,
 } from "@/utils/_apis/courses-apis";
 import { useParams } from "react-router-dom";
-import { CourseDetails, Material } from "@/types/courses";
+import { CourseDetailsContext, MaterialContext } from "@/types/courses";
+import { MaterialType } from "@/utils/types/adminTypes";
 
 export const CoursePlayground: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentMaterial, setCurrentMaterial] = useState<Material | null>(null);
+  const [currentMaterial, setCurrentMaterial] =
+    useState<MaterialContext | null>(null);
   const [expandedModules, setExpandedModules] = useState<string[]>(["basics"]);
-  const { darkMode } = useSettings();
+  const {
+    darkMode,
+    currentCheck,
+    updateCurrentCheck: updateCurrentMaterial,
+  } = useSettings();
+  const [courseData, setCourseData] = useState<CourseDetailsContext | null>(
+    null
+  );
   const { id } = useParams();
-
-  const [courseData, setCourseData] = useState<CourseDetails | null>(null);
+  const userContext = useContext(UserContext);
+  if (!userContext || !userContext.auth?.user) return null;
+  const user = userContext.auth.user;
 
   const fetchCourseData = async () => {
     const data = await getSingleCoursesApi({ course_id: id as string });
-    setCourseData(data);
+
+    const flatMaterialList: string[] = [];
+    data.modules.forEach((module) =>
+      module.lessons.forEach((lesson) =>
+        lesson.materials.forEach((material) =>
+          flatMaterialList.push(material.id)
+        )
+      )
+    );
+
+    const currentMaterialIndex = flatMaterialList.indexOf(
+      data.current_material ?? ""
+    );
+
+    const courseDetails: CourseDetailsContext = {
+      ...data,
+      modules: data.modules.map((module) => {
+        let moduleCompleted = 0;
+        let moduleTotal = 0;
+
+        const mod = {
+          ...module,
+          lessons: module.lessons.map((lesson) => {
+            return {
+              ...lesson,
+              materials: lesson.materials.map((material) => {
+                const indexInFlat = flatMaterialList.indexOf(material.id);
+                const isFinished = indexInFlat < currentMaterialIndex;
+
+                moduleTotal++;
+                if (isFinished) moduleCompleted++;
+
+                return {
+                  ...material,
+                  isFinished,
+                  ...(material.type === MaterialType.QUIZ_GROUP
+                    ? {
+                        old_result:
+                          data?.enrollment_info.quizzes_result[material.id] ??
+                          10,
+                      }
+                    : {}),
+                };
+              }),
+            };
+          }),
+          totalMaterials: moduleTotal,
+          completedMaterials: moduleCompleted,
+          progress: moduleTotal
+            ? Math.floor((moduleCompleted / moduleTotal) * 100)
+            : 0,
+        };
+
+        return mod;
+      }),
+      completedMaterials: flatMaterialList.slice(0, currentMaterialIndex)
+        .length,
+      totalMaterials: flatMaterialList.length,
+    };
+
+    setCourseData(courseDetails);
   };
 
   useEffect(() => {
     fetchCourseData();
   }, []);
 
-  const flatMaterials = useMemo(
-    () =>
-      courseData?.modules?.flatMap((m: any) =>
-        m?.lessons.flatMap((l: Lesson) => l?.materials)
-      ) ?? [],
-    [courseData?.modules]
-  );
+  const flatMaterials =
+    courseData?.modules?.flatMap((m) =>
+      m.lessons.flatMap((l) => l.materials)
+    ) ?? [];
 
   useEffect(() => {
-    if (!currentMaterial && flatMaterials?.length > 0) {
-      const firstMaterial =
-        flatMaterials?.find((m: any) => m.current) || flatMaterials[0];
-      setCurrentMaterial(firstMaterial);
+    if (!currentMaterial && flatMaterials.length > 0) {
+      const curMaterial =
+        flatMaterials.find((m) => m.id === courseData?.current_material) ??
+        flatMaterials[0];
+      setCurrentMaterial(curMaterial);
+      updateCurrentMaterial(
+        curMaterial.type === MaterialType.ARTICLE
+          ? { ...curMaterial, total_read: 0 }
+          : curMaterial.type === MaterialType.QUIZ_GROUP
+          ? { ...curMaterial, result: 0 }
+          : curMaterial
+      );
     }
   }, [flatMaterials, currentMaterial]);
 
   const currentIndex = currentMaterial
-    ? flatMaterials.findIndex((m: any) => m.id === currentMaterial.id)
+    ? flatMaterials.findIndex((m) => m.id === currentMaterial.id)
     : -1;
+
   const nextMaterial =
-    currentIndex > -1 ? flatMaterials[currentIndex + 1] : null;
+    currentIndex >= 0 && currentIndex < flatMaterials.length - 1
+      ? flatMaterials[currentIndex + 1]
+      : null;
+
   const prevMaterial =
     currentIndex > 0 ? flatMaterials[currentIndex - 1] : null;
 
-  const handleNext = () => {
-    if (nextMaterial && !nextMaterial.locked) setCurrentMaterial(nextMaterial);
+  const handleComplete = async () => {
+    if (!user?.id || !currentCheck || !courseData) return;
+
+    try {
+      await patchCourseProgressApi({
+        userId: user.id,
+        courseId: courseData.id,
+        materialId: nextMaterial ? nextMaterial.id : currentMaterial!.id,
+        material: {
+          type: currentMaterial!.type,
+          ...(currentMaterial!.type === MaterialType.QUIZ_GROUP &&
+          currentCheck.type === MaterialType.QUIZ_GROUP
+            ? {
+                quizGroup_id: currentMaterial!.id,
+                result: currentCheck.result,
+              }
+            : {}),
+        },
+      });
+
+      await fetchCourseData(); // refresh state from backend
+    } catch (err) {
+      console.error("PATCH complete error:", err);
+    }
   };
+
+  const handleNext = async () => {
+    if (!nextMaterial || !currentMaterial || !courseData) return;
+
+    if (!currentMaterial.isFinished) {
+      await handleComplete();
+    }
+
+    setCurrentMaterial(nextMaterial);
+    updateCurrentMaterial(
+      nextMaterial.type === MaterialType.ARTICLE
+        ? { ...nextMaterial, total_read: 0 }
+        : nextMaterial.type === MaterialType.QUIZ_GROUP
+        ? { ...nextMaterial, result: 0 }
+        : nextMaterial
+    );
+  };
+
   const handlePrev = () => {
-    if (prevMaterial) setCurrentMaterial(prevMaterial);
+    if (prevMaterial) {
+      setCurrentMaterial(prevMaterial);
+      updateCurrentMaterial(
+        prevMaterial.type === MaterialType.ARTICLE
+          ? { ...prevMaterial, total_read: 0 }
+          : prevMaterial.type === MaterialType.QUIZ_GROUP
+          ? { ...prevMaterial, result: 0 }
+          : prevMaterial
+      );
+    }
   };
 
   const toggleModule = (moduleId: string) => {
@@ -70,79 +197,7 @@ export const CoursePlayground: React.FC = () => {
   };
 
   if (!currentMaterial) return <p>There is no current Material</p>;
-
-  const userContext = useContext(UserContext);
-  if (!userContext || !userContext.auth?.user) return null;
-
-  if (!courseData) return;
-
-  const user = userContext.auth.user;
-
-  const handleComplete = async () => {
-    if (!user?.id) return;
-
-    const updatedCourseData = {
-      ...courseData,
-      modules: courseData.modules.map((module: any) => ({
-        ...module,
-        lessons: module.lessons.map((lesson: Lesson) => ({
-          ...lesson,
-          materials: lesson.materials.map((material: Material) =>
-            material.id === currentMaterial.id
-              ? { ...material, completed: true }
-              : material
-          ),
-        })),
-      })),
-    };
-    setCourseData(updatedCourseData);
-    setCurrentMaterial({ ...currentMaterial });
-
-    try {
-      await patchCourseProgressApi({
-        userId: user.id,
-        courseId: courseData.id,
-        materialId: currentMaterial.id,
-      });
-    } catch (err) {
-      console.error("خطأ في PATCH complete:", err);
-      setCourseData(courseData);
-      setCurrentMaterial(currentMaterial);
-    }
-  };
-
-  const handleRestart = async () => {
-    if (!user?.id) return;
-
-    const updatedCourseData = {
-      ...courseData,
-      modules: courseData.modules.map((module: any) => ({
-        ...module,
-        lessons: module.lessons.map((lesson: Lesson) => ({
-          ...lesson,
-          materials: lesson.materials.map((material: Material) =>
-            material.id === currentMaterial.id
-              ? { ...material, completed: false }
-              : material
-          ),
-        })),
-      })),
-    };
-    setCourseData(updatedCourseData);
-    setCurrentMaterial({ ...currentMaterial });
-
-    try {
-      await patchCourseProgressApi({
-        userId: user.id,
-        courseId: courseData.id,
-        materialId: currentMaterial.id,
-      });
-    } catch (err) {
-      console.error("خطأ في PATCH restart:", err);
-      setCourseData(courseData);
-      setCurrentMaterial(currentMaterial);
-    }
-  };
+  if (!courseData) return null;
 
   return (
     <div className={`h-screen flex flex-col ${darkMode ? "dark" : ""}`}>
@@ -151,13 +206,12 @@ export const CoursePlayground: React.FC = () => {
         sidebarOpen={sidebarOpen}
         prevMaterial={prevMaterial}
         nextMaterial={nextMaterial}
+        currentIndex={currentIndex}
+        currentMaterial={currentMaterial}
         handlePrev={handlePrev}
         handleNext={handleNext}
-        currentIndex={currentIndex}
         setSidebarOpen={setSidebarOpen}
-        currentMaterial={currentMaterial}
         handleComplete={handleComplete}
-        handleRestart={handleRestart}
       />
 
       <div className="flex flex-1 overflow-hidden">

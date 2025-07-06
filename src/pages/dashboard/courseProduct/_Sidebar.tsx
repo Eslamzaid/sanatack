@@ -11,47 +11,21 @@ import {
 import LogoLight from "@/assets/logo.svg";
 import LogoDark from "@/assets/dark_logo.svg";
 import { useNavigate } from "react-router-dom";
-import { CourseDetails, Material } from "@/types/courses";
+import {
+  CourseDetailsContext,
+  LessonDetailsContext,
+  MaterialContext,
+  ModuleDetailsContext,
+} from "@/types/courses";
 import { MaterialType } from "@/utils/types/adminTypes";
-
-export interface Lesson {
-  id: string;
-  name: string;
-  materials: Material[];
-  completedCount: number;
-  totalCount: number;
-  duration: string;
-}
-
-export interface Module {
-  id: string;
-  title: string;
-  lessons: Lesson[];
-  completedCount: number;
-  totalCount: number;
-  progress: number;
-}
-
-export interface Course {
-  id: string;
-  title: string;
-  description: string;
-  modules: Module[];
-  completionRate: number;
-  enrolledCount: number;
-  totalCount: number;
-  course_info?: {
-    durationHours: number;
-  };
-}
 
 export interface SideNavbarProps {
   sidebarOpen: boolean;
-  courseData: CourseDetails | null;
+  courseData: CourseDetailsContext | null;
   expandedModules: string[];
   toggleModule: (id: string) => void;
-  currentMaterial: Material;
-  setCurrentMaterial: (m: Material) => void;
+  currentMaterial: MaterialContext;
+  setCurrentMaterial: (m: MaterialContext) => void;
   setSidebarOpen: (v: boolean) => void;
   darkMode: boolean;
 }
@@ -63,7 +37,8 @@ const iconMap: any = {
   text: FileText,
 } as const;
 
-export const getIcon = (type: Material["type"]) => iconMap[type] ?? FileText;
+export const getIcon = (type: MaterialContext["type"]) =>
+  iconMap[type] ?? FileText;
 
 export const SideNavbar: React.FC<SideNavbarProps> = ({
   sidebarOpen,
@@ -87,9 +62,9 @@ export const SideNavbar: React.FC<SideNavbarProps> = ({
 
   const normalisedSearch = searchTerm.trim().toLowerCase();
 
-  const filteredModules: Module[] = (courseData.modules ?? [])
+  const filteredModules: ModuleDetailsContext[] = (courseData.modules ?? [])
     .map((module) => {
-      const filteredLessons: Lesson[] = (module.lessons ?? [])
+      const filteredLessons: LessonDetailsContext[] = (module.lessons ?? [])
         .map((lesson) => {
           const filteredMaterials = (lesson.materials ?? []).filter(
             (material) =>
@@ -147,25 +122,10 @@ export const SideNavbar: React.FC<SideNavbarProps> = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const courseMeterials =
-    courseData?.modules?.flatMap((module) =>
-      module?.lessons?.flatMap((lesson) => lesson?.materials ?? [])
-    ) ?? [];
-
-  const totalMaterials = courseMeterials.length;
-  const completedMaterials = courseMeterials.filter(
-    (m) => m.title == "This is not correct, needs implementation"
-  ).length;
-  const totalDuration = courseMeterials.reduce(
-    (sum, material) => sum + Number(material.duration || 0),
-    0
-  );
-
-  const completionRate = totalMaterials
-    ? Math.round((completedMaterials / totalMaterials) * 100)
-    : 0;
-
-  const renderMaterialButton = (material: Material, isActive: boolean) => {
+  const renderMaterialButton = (
+    material: MaterialContext,
+    isActive: boolean
+  ) => {
     const Icon = getIcon(material.type);
 
     const buttonDisabled = false; // material.locked;
@@ -321,14 +281,15 @@ export const SideNavbar: React.FC<SideNavbarProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {completionRate}%
+                {courseData.completionRate}%
               </span>
               <div className="text-right">
                 <div className="text-sm font-medium text-gray-900 dark:text-white">
-                  {completedMaterials} من {totalMaterials} دروس
+                  {courseData.completedMaterials} من {courseData.totalMaterials}{" "}
+                  درس
                 </div>
                 <div className="text-xs text-gray-500">
-                  المدة الإجمالية: {totalDuration} دقيقة
+                  المدة الإجمالية: {courseData.course_info.durationHours} دقيقة
                 </div>
               </div>
             </div>
@@ -382,7 +343,7 @@ export const SideNavbar: React.FC<SideNavbarProps> = ({
                   <div className="flex items-center justify-start gap-3 text-xs text-gray-500">
                     <span>{module.lessons.length} دروس</span>
                     <span>
-                      {module.completedCount}/{module.totalCount}
+                      {module.completedMaterials}/{module.totalMaterials}
                     </span>
                   </div>
                 </div>
@@ -436,13 +397,13 @@ export const SideNavbar: React.FC<SideNavbarProps> = ({
           <div className="grid grid-cols-2 gap-3 text-center">
             <div className="p-3 bg-white dark:bg-gray-900 rounded-xl">
               <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                {completedMaterials}
+                {courseData.completedMaterials}
               </div>
               <div className="text-xs text-gray-500">دروس مكتملة</div>
             </div>
             <div className="p-3 bg-white dark:bg-gray-900 rounded-xl">
               <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {totalMaterials - completedMaterials}
+                {courseData.totalMaterials - courseData.completedMaterials}
               </div>
               <div className="text-xs text-gray-500">متبقية</div>
             </div>

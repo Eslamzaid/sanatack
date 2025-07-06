@@ -12,6 +12,8 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
+import { useSettings } from "@/context/SettingsContexts";
+import { MaterialType } from "@/utils/types/adminTypes";
 
 interface CodeBlockProps {
   code: string;
@@ -55,7 +57,7 @@ interface MaterialData {
 
 interface Material {
   id: string;
-  type: "article" | "quiz";
+  type: MaterialType.ARTICLE;
   data?: {
     [key: string]: MaterialData;
   };
@@ -76,6 +78,7 @@ export default function ArticleView({
   const [touchEnd, setTouchEnd] = useState<number>(0);
   const [slides, setSlides] = useState<ArticleSlide[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const { updateCurrentCheck: updateCurrentMaterial } = useSettings();
 
   useEffect(() => {
     if (material && material.data) {
@@ -194,7 +197,11 @@ export default function ArticleView({
   };
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev < slides.length - 1 ? prev + 1 : prev));
+    setCurrentSlide((prev) => {
+      const newSlide = prev < slides.length - 1 ? prev + 1 : prev;
+      updateCurrentMaterial({ ...material, total_read: newSlide });
+      return newSlide;
+    });
   };
 
   const prevSlide = () => {

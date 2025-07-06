@@ -1,19 +1,23 @@
 import { FileText } from "lucide-react";
 import { VideoView } from "./_VideoView";
 import QuizView from "./_QuizView";
-import { Material } from "@/types/courses";
+import { MaterialContext } from "@/types/courses";
 import { MaterialType } from "@/utils/types/adminTypes";
 import ArticleView from "./_ArticleView";
 
-export default function MaterialViewer({ material }: { material: Material }) {
+export default function MaterialViewer({
+  material,
+}: {
+  material: MaterialContext;
+}) {
   if (material.type === MaterialType.VIDEO)
-    return <VideoView video={material} />;
+    return <VideoView key={material.youtubeId} video={material} />;
 
   if (material.type === MaterialType.ARTICLE)
     return <ArticleView material={material} />;
 
   if (material.type === MaterialType.QUIZ_GROUP)
-    return <QuizView quizGroup={material} />;
+    return <QuizView key={material.id} quizGroup={material} />;
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
