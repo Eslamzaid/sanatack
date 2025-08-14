@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useSettings } from "@/context/SettingsContexts";
 import { MaterialType } from "@/utils/types/adminTypes";
-import { Article, InfoCardProps } from "@/types/courses";
+import { Article, ArticleContext, InfoCardProps } from "@/types/courses";
 
 interface CodeBlockProps {
   code: string;
@@ -29,7 +29,7 @@ export interface QuoteProps {
 export default function ArticleView({
   article,
 }: {
-  article: any;
+  article: ArticleContext;
 }): JSX.Element {
   const [currentSlide, setCurrentSlide] = useState<number>(0);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -38,6 +38,7 @@ export default function ArticleView({
   const [slides, setSlides] = useState<Article[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const { updateCurrentCheck: updateCurrentMaterial } = useSettings();
+
   useEffect(() => {
     if (!article?.data) return;
 
@@ -156,8 +157,8 @@ export default function ArticleView({
       updateCurrentMaterial({
         ...article,
         total_read: newSlide,
-        id: article.data?.id,
-        duration: article.data?.duration,
+        id: article.data[newSlide % article.data.length].id,
+        duration: 5000,
       });
       return newSlide;
     });

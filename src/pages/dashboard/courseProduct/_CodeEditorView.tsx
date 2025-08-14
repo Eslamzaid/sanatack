@@ -5,6 +5,11 @@ import { ConsoleEntry } from "./code/type";
 import InstructionsPanel from "./code/_InstructionsPanel";
 import { codeCheckApi, codeExecutionApi } from "@/utils/_apis/courses-apis";
 import { CodeMaterialContext } from "@/types/courses";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 
 export default function CodePlayground({
   material,
@@ -60,11 +65,12 @@ export default function CodePlayground({
         stdin: "",
       });
 
+      console.log({ result });
       if (result.success) {
         setConsoleOutput([
           {
             type: "success",
-            content: result.output || "Code executed successfully!",
+            content: result.output,
           },
         ]);
       } else {
@@ -76,6 +82,7 @@ export default function CodePlayground({
         ]);
       }
     } catch (error: any) {
+      console.log({ error });
       setConsoleOutput([
         {
           type: "error",
@@ -144,30 +151,34 @@ export default function CodePlayground({
   }, [code]);
 
   return (
-    <div
-      className={`flex flex-col md:flex-row h-screen w-full font-sans ${
-        darkMode ? "dark" : ""
-      }`}
-    >
-      <InstructionsPanel
-        material={material}
-        currentContainerIndex={currentSectionIndex}
-        setCurrentContainerIndex={setCurrentSectionIndex}
-      />
+    <div className={`h-full w-full font-sans ${darkMode ? "dark" : ""}`}>
+      <ResizablePanelGroup direction="horizontal">
+        <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+          <InstructionsPanel
+            material={material}
+            currentContainerIndex={currentSectionIndex}
+            setCurrentContainerIndex={setCurrentSectionIndex}
+          />
+        </ResizablePanel>
 
-      <CodeEditor
-        code={code}
-        darkMode={darkMode}
-        isRunning={isRunning}
-        currentLang={currentSection?.codeSnippet?.lang || "js"}
-        runCode={runCode}
-        checkCode={checkCode}
-        resetCode={resetCode}
-        copyCode={copyCode}
-        iframeRef={iframeRef}
-        consoleOutput={consoleOutput}
-        initialCode={material.initialCode}
-      />
+        <ResizableHandle withHandle />
+
+        <ResizablePanel>
+          <CodeEditor
+            code={code}
+            darkMode={darkMode}
+            isRunning={isRunning}
+            currentLang={currentSection?.codeSnippet?.lang || "js"}
+            runCode={runCode}
+            checkCode={checkCode}
+            resetCode={resetCode}
+            copyCode={copyCode}
+            iframeRef={iframeRef}
+            consoleOutput={consoleOutput}
+            initialCode={material.initialCode}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

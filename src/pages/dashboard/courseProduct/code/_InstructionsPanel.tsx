@@ -70,12 +70,9 @@ export default function InstructionsPanel({
   setCurrentContainerIndex: (index: number) => void;
   isArabic?: boolean;
 }) {
-  console.log({ material: material });
   const [copiedCode, setCopiedCode] = useState<number | null>(null);
   const [expandedCode, setExpandedCode] = useState<Set<number>>(new Set());
-  console.log({ material: material.data });
   const currentContainer = material.data[currentContainerIndex];
-
   const copyToClipboard = async (code: string, componentId: number) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -456,7 +453,6 @@ export default function InstructionsPanel({
   };
 
   const renderComponent = (component: Component, index: number) => {
-    console.log({ component: component });
     switch (component.type) {
       case "text":
         return renderTextComponent(component, index);
@@ -474,10 +470,10 @@ export default function InstructionsPanel({
         return null;
     }
   };
-  console.log({ currentContainer: currentContainer });
+
   return (
     <aside
-      className="h-1/2 md:h-full w-full md:w-[40%] flex flex-col border-l md:border-l-0 border-b md:border-b-0 bg-[#f3f4f6] dark:bg-gray-900 p-4 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white overflow-hidden"
+      className="flex flex-col border-l md:border-l-0 border-b md:border-b-0 bg-[#f3f4f6] dark:bg-gray-900 p-4 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white overflow-hidden"
       dir="rtl"
     >
       <main className="flex-1 overflow-y-auto scrollbar-hidden p-4 md:p-8 md:pb-28 space-y-8 bg-white dark:bg-gray-900 rounded-xl text-gray-900 dark:text-white">

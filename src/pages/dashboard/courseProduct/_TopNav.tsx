@@ -100,6 +100,7 @@ export const NavigationPlayground = ({
       }
     }
 
+    console.log({ currentCheck, currentMaterial });
     setFinished(true);
   }, [currentCheck]);
 

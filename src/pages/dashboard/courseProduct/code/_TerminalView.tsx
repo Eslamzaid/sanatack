@@ -8,16 +8,14 @@ export default function TerminalView({ entries }: { entries: ConsoleEntry[] }) {
   const borderClr = "border-gray-400 dark:border-gray-700";
 
   return (
-    <div className={`h-64 border-t ${borderClr} ${bgCanvas}`}>
+    <div className={`h-full border-t ${borderClr} ${bgCanvas}`}>
       <div
-        className={`flex h-10 items-center justify-end px-4 ${bgHeader} border-b ${borderClr}`}
+        className={`flex items-center justify-end px-4 ${bgHeader} border-b ${borderClr}`}
       >
         <TerminalIcon className="w-4 h-4 text-gray-600 dark:text-gray-200" />
       </div>
 
-      <div
-        className={`h-[calc(100%-2.5rem)] overflow-y-auto p-4 ${bgBody} font-mono text-sm`}
-      >
+      <div className={` overflow-y-auto p-4 ${bgBody} font-mono text-sm`}>
         {entries.length > 0 ? (
           entries.map((entry, i) => (
             <div key={i} className="mb-2 flex items-start gap-3">

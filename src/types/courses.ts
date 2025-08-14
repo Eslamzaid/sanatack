@@ -94,7 +94,7 @@ export interface Article {
   created_at: string;
   updated_at: string;
   title: string;
-  data: MaterialData[];
+  data: { id: string; title: string; components: MaterialData[] }[];
   duration: number;
   order: number;
   type: MaterialType.ARTICLE;
@@ -184,7 +184,7 @@ export interface CodeMaterial {
   locked: boolean;
   type: MaterialType.CODE;
   title: string;
-  initialCode: string
+  initialCode: string;
   data: {
     id: number | string;
   };
